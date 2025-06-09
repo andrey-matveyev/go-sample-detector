@@ -5,21 +5,19 @@ import (
 	"context"
 	"log/slog"
 	"sync"
-	"sync/atomic"
 )
 
 type queue struct {
 	poolName   string
 	mtx        sync.Mutex
-	innerCall  chan struct{}
-	done       atomic.Bool
+	innerChan  chan struct{}
 	queueTasks *list.List
 }
 
 func newQueue(poolName string) *queue {
 	item := queue{}
 	item.poolName = poolName
-	item.innerCall = make(chan struct{}, 1)
+	item.innerChan = make(chan struct{}, 1)
 	item.queueTasks = list.New()
 	return &item
 }
@@ -42,19 +40,11 @@ func (item *queue) pop() *task {
 	return elem.Value.(*task)
 }
 
-func (item *queue) getDone() bool {
-	return item.done.Load()
-}
-
-func (item *queue) setDone() {
-	item.done.Store(true)
-}
-
 // Create Queue (based on linked list)
 // inpQueue and outQueue transforms Queue to the chanel
 func inpQueue(poolName string, inp chan *task) *queue {
 	queue := newQueue(poolName)
-	queue.done.Store(false)
+	queue.poolName = poolName
 	go inpProcess(inp, queue)
 	return queue
 }
@@ -66,12 +56,11 @@ func inpProcess(inp chan *task, queue *queue) {
 		queue.push(value)
 
 		select {
-		case queue.innerCall <- struct{}{}:
+		case queue.innerChan <- struct{}{}:
 		default:
 		}
 	}
-	queue.setDone()
-	close(queue.innerCall)
+	close(queue.innerChan)
 
 	logger.Debug("InpProcess of Queue - stoped.", slog.String("poolName", queue.poolName))
 }
@@ -93,7 +82,7 @@ func outProcess(ctx context.Context, queue *queue, out chan *task) {
 		case <-ctx.Done():
 			logger.Debug("OutProcess of Queue - cancelled.", slog.String("poolName", queue.poolName))
 			return
-		case <-queue.innerCall:
+		case _, ok := <-queue.innerChan:
 			for {
 				task := queue.pop()
 				if task != nil {
@@ -103,11 +92,11 @@ func outProcess(ctx context.Context, queue *queue, out chan *task) {
 						logger.Debug("OutProcess of Queue - cancelled during task send.", slog.String("poolName", queue.poolName))
 						return
 					}
-					continue
-				}
-				if !queue.getDone() {
+				} else {
 					break
 				}
+			}
+			if !ok {
 				logger.Debug("OutProcess of Queue - stopped because queue is done and empty.", slog.String("poolName", queue.poolName))
 				return
 			}
