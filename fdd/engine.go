@@ -124,10 +124,10 @@ func (item *searchEngine) runPipeline(ctx context.Context, rootPath string) {
 func (item *searchEngine) pipeline(ctx context.Context, rootPath string) chan *task {
 	rec := make(chan *task)
 
-	ch := fileGenerator(rootPath, 3, rec, fetchQueue(ctx, rec, item.metrics))
-	ch = runPool(&sizer{}, 1, sizeQueue(ctx, ch, item.metrics), newCheckList())
-	ch = runPool(&hasher{}, 6, hashQueue(ctx, ch, item.metrics), newCheckList())
-	ch = runPool(&matcher{}, 7, matchQueue(ctx, ch, item.metrics), newCheckList())
-	ch = resultQueue(ctx, ch, item.metrics)
-	return ch
+	out := fileGenerator(rootPath, 4, rec, fetchQueue(ctx, rec, item.metrics))
+	out = runPool(&sizer{}, 1, sizeQueue(ctx, out, item.metrics), newCheckList())
+	out = runPool(&hasher{}, 6, hashQueue(ctx, out, item.metrics), newCheckList())
+	out = runPool(&matcher{}, 8, matchQueue(ctx, out, item.metrics), newCheckList())
+	out = resultQueue(ctx, out, item.metrics)
+	return out
 }
