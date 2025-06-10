@@ -15,6 +15,8 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+// Often, reality is stranger than fiction.
+
 const (
 	//defPath string = "C:/Users/Zver/.vscode/p1/test"
 	defPath            string = "."
@@ -30,7 +32,7 @@ type mainOptions struct {
 	configFileName  string
 	ResultFileName  string `yaml:"File name for results"`
 	LoggerFileName  string `yaml:"File name for logs"`
-	LoggerLevel     string `yaml:"Logging level"`
+	LoggerLevel     string `yaml:"Logging (info/debug)"`
 	LoggerAddSource bool   `yaml:"Adds source info in logs"`
 }
 
@@ -120,11 +122,11 @@ func overrideConfig(config *mainOptions) {
 		}
 	}
 	fmt.Printf("---- CURRENT CONFIGURATION ----\n")
-	fmt.Printf("Path:                     %s\n", config.Path)
-	fmt.Printf("File name for results:    %s\n", config.ResultFileName)
-	fmt.Printf("File name for logs:       %s\n", config.LoggerFileName)
-	fmt.Printf("Logging level:            %s\n", config.LoggerLevel)
-	fmt.Printf("Adds source info in logs: %t\n", config.LoggerAddSource)
+	fmt.Printf("Path:                       %s\n", config.Path)
+	fmt.Printf("File name for results:      %s\n", config.ResultFileName)
+	fmt.Printf("File name for logs:         %s\n", config.LoggerFileName)
+	fmt.Printf("Logging level (info/debug): %s\n", config.LoggerLevel)
+	fmt.Printf("Adds source info in logs:   %t\n", config.LoggerAddSource)
 	fmt.Printf("-------------------------------\n")
 }
 

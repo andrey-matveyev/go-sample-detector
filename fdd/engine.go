@@ -11,7 +11,6 @@ import (
 	"time"
 )
 
-//var workerPools sync.WaitGroup
 var logger *slog.Logger
 
 type KeyCtxLogger struct{}

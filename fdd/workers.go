@@ -307,7 +307,7 @@ func readDir(name string) ([]os.DirEntry, error) {
 }
 
 func checkError(err error, msg, method string, item any, task *task) bool {
-	if err != nil {
+	if err != nil && err != io.EOF {
 		logger.Info(msg,
 			slog.String("item", fmt.Sprintf("%T", item)),
 			slog.String("method", method),
