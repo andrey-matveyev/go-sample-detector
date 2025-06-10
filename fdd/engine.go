@@ -11,8 +11,7 @@ import (
 	"time"
 )
 
-var foldersCount sync.WaitGroup
-var workerPools sync.WaitGroup
+//var workerPools sync.WaitGroup
 var logger *slog.Logger
 
 type KeyCtxLogger struct{}
@@ -64,9 +63,10 @@ func GetEngine() SearchEngine {
 
 type searchEngine struct {
 	//vars *engineVariables
-	callback Callback
-	result   *Result
-	metrics  *metrics
+	callback  Callback
+	poolCount sync.WaitGroup
+	result    *Result
+	metrics   *metrics
 }
 
 func newSearchEngine() *searchEngine {
@@ -117,17 +117,17 @@ func (item *searchEngine) runPipeline(ctx context.Context, rootPath string) {
 	}
 	item.result = newResult(predResult)
 
-	workerPools.Wait()
+	item.poolCount.Wait()
 	item.callback()
 }
 
 func (item *searchEngine) pipeline(ctx context.Context, rootPath string) chan *task {
 	rec := make(chan *task)
 
-	out := fileGenerator(rootPath, 4, rec, fetchQueue(ctx, rec, item.metrics))
-	out = runPool(&sizer{}, 1, sizeQueue(ctx, out, item.metrics), newCheckList())
-	out = runPool(&hasher{}, 6, hashQueue(ctx, out, item.metrics), newCheckList())
-	out = runPool(&matcher{}, 8, matchQueue(ctx, out, item.metrics), newCheckList())
+	out := fileGenerator(rootPath, 4, rec, fetchQueue(ctx, rec, item.metrics), item)
+	out = runPool(&sizer{}, 1, sizeQueue(ctx, out, item.metrics), newCheckList(), item)
+	out = runPool(&hasher{}, 6, hashQueue(ctx, out, item.metrics), newCheckList(), item)
+	out = runPool(&matcher{}, 8, matchQueue(ctx, out, item.metrics), newCheckList(), item)
 	out = resultQueue(ctx, out, item.metrics)
 	return out
 }
