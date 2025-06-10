@@ -36,7 +36,7 @@ func progressMonitor(ctx context.Context, engine fdd.SearchEngine) {
 				metrics(stat.Match),
 				"match",
 				metrics(stat.Pack),
-				"pack",
+				"result",
 				stat.Duration,
 			)
 		}

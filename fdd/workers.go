@@ -2,25 +2,123 @@ package fdd
 
 import (
 	"bytes"
+	"fmt"
 	"hash/crc32"
 	"io"
 	"log/slog"
 	"os"
 	"path/filepath"
+	"sync"
 )
 
 type worker interface {
 	run(inp, out chan *task, checker checker)
 }
 
-type fetcher struct{
-	outFolder chan *task
+// For coordination works of fetcher-pool in recursive mode
+type dispatcher struct {
+	done chan struct{} // To send signal about "all folders are processed" - close this chan
+	stop chan struct{} // To send signal about "all fetchers are stopped" - close this chan
+	inc  chan int      // Chan for count unprocessed folders
+	rec  chan *task    // Input chan for recursive tasks (tasks with folders)
 }
 
-func (item fetcher) run(inp, out chan *task, checker checker) {
+func newDispatcher(rec chan *task) *dispatcher {
+	dd := &dispatcher{}
+	dd.inc = make(chan int)
+	dd.done = make(chan struct{})
+	dd.stop = make(chan struct{})
+	dd.rec = rec
+	return dd
+}
+
+// Sending first task for processing
+func (dd *dispatcher) start(rootPath string) {
+	dd.inc <- 1
+	dd.rec <- newTask(key{}, info{path: rootPath})
+}
+
+// Wait until all folders are processed
+func (dd *dispatcher) waitQueueDone() {
+	var done int64
+	for i := range dd.inc {
+		done += int64(i)
+		if done == 0 {
+			close(dd.done)
+			return
+		}
+	}
+}
+
+// Wait until it is possible to close the channel "rec"
+func (dd *dispatcher) waitFetcherStopped() {
+	select {
+	case <-dd.done:
+	case <-dd.stop:
+	}
+	close(dd.rec)
+}
+
+func fileGenerator(rootPath string, amt int, rec, inp chan *task) chan *task {
+	out := make(chan *task)
+
+	dispather := newDispatcher(rec)
+	go dispather.start(rootPath)
+	go dispather.waitQueueDone()
+	go dispather.waitFetcherStopped()
+
+	var workers sync.WaitGroup
+	for range amt {
+		workers.Add(1)
+		go func() {
+			defer workers.Done()
+			(&fetcher{}).run(inp, out, dispather.rec, dispather.inc)
+		}()
+	}
+	logger.Debug("Worker-pool - started.", slog.String("workerType", fmt.Sprintf("%T", fetcher{})))
+
+	go func() {
+		workers.Wait()
+		close(out)
+		close(dispather.inc)
+		close(dispather.stop)
+
+		logger.Debug("Worker-pool - stoped.", slog.String("workerType", fmt.Sprintf("%T", fetcher{})))
+	}()
+	return out
+}
+
+func runPool(runWorker worker, amt int, inp chan *task, checker checker) chan *task {
+	out := make(chan *task)
+
+	var workers sync.WaitGroup
+
+	workerPools.Add(1)
+	for range amt {
+		workers.Add(1)
+		go func() {
+			defer workers.Done()
+			runWorker.run(inp, out, checker)
+		}()
+	}
+	logger.Debug("Worker-pool - started.", slog.String("workerType", fmt.Sprintf("%T", runWorker)))
+
+	go func() {
+		workers.Wait()
+		close(out)
+		workerPools.Done()
+
+		logger.Debug("Worker-pool - stoped.", slog.String("workerType", fmt.Sprintf("%T", runWorker)))
+	}()
+	return out
+}
+
+type fetcher struct{}
+
+func (item *fetcher) run(inp, out, rec chan *task, inc chan int) {
 	for currentTask := range inp {
 		func() {
-			defer foldersCount.Done()
+			defer func() { inc <- -1 }()
 
 			objects, err := readDir(currentTask.info.path) // custom's changed os.ReadDir
 			if err != nil {
@@ -36,8 +134,8 @@ func (item fetcher) run(inp, out chan *task, checker checker) {
 				objectPath := filepath.Join(currentTask.path, object.Name())
 
 				if object.IsDir() {
-					foldersCount.Add(1)
-					item.outFolder <- newTask(key{}, info{path: objectPath})
+					inc <- 1
+					rec <- newTask(key{}, info{path: objectPath})
 					continue
 				}
 
@@ -58,13 +156,8 @@ func (item fetcher) run(inp, out chan *task, checker checker) {
 
 type sizer struct{}
 
-func (item sizer) run(inp, out chan *task, checker checker) {
+func (item *sizer) run(inp, out chan *task, checker checker) {
 	for currentTask := range inp {
-/*
-		if currentTask.size == 0 {
-			continue
-		}
-*/
 		checkedTask, detected := checker.verify(currentTask)
 		if detected {
 			out <- currentTask
@@ -77,7 +170,7 @@ func (item sizer) run(inp, out chan *task, checker checker) {
 
 type hasher struct{}
 
-func (item hasher) run(inp, out chan *task, checker checker) {
+func (item *hasher) run(inp, out chan *task, checker checker) {
 	buf := make([]byte, 512)
 
 	for inpTask := range inp {
@@ -126,7 +219,7 @@ func (item hasher) run(inp, out chan *task, checker checker) {
 
 type matcher struct{}
 
-func (item matcher) run(inp, out chan *task, checker checker) {
+func (item *matcher) run(inp, out chan *task, checker checker) {
 	buf1 := make([]byte, 2*1024)
 	buf2 := make([]byte, 2*1024)
 
@@ -189,11 +282,11 @@ func (item matcher) run(inp, out chan *task, checker checker) {
 				filesEqual, checkErr := checkEqual(file1, file2, buf1, buf2)
 				if checkErr != nil {
 					logger.Info("File close error.",
-								slog.String("worker", "matcher"),
-								slog.String("method", "checkEqual"),
-								slog.String("error", checkErr.Error()),
-								slog.String("file1", currentTask.path),
-								slog.String("file2", reviewedTask.path))
+						slog.String("worker", "matcher"),
+						slog.String("method", "checkEqual"),
+						slog.String("error", checkErr.Error()),
+						slog.String("file1", currentTask.path),
+						slog.String("file2", reviewedTask.path))
 				}
 
 				if filesEqual {

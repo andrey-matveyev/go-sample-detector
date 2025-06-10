@@ -75,11 +75,11 @@ func newSearchEngine() *searchEngine {
 	return se
 }
 
-func (item *searchEngine) Run(ctx context.Context, path string, callback Callback) {
+func (item *searchEngine) Run(ctx context.Context, rootPath string, callback Callback) {
 	item.callback = callback
 	logger = loggerFromContext(ctx)
 	item.init()
-	go item.runPipeline(ctx, path)
+	go item.runPipeline(ctx, rootPath)
 }
 
 func (item *searchEngine) GetProgress() []byte {
@@ -102,10 +102,10 @@ func (item *searchEngine) init() {
 	item.metrics.StartTime = time.Now()
 }
 
-func (item *searchEngine) runPipeline(ctx context.Context, path string) {
+func (item *searchEngine) runPipeline(ctx context.Context, rootPath string) {
 	predResult := newPredResult()
 
-	for task := range item.pipeline(ctx, path) {
+	for task := range item.pipeline(ctx, rootPath) {
 		pathList, detected := predResult.List[task.key]
 		if detected {
 			predResult.List[task.key] = append(pathList, task.info.path)
@@ -121,12 +121,13 @@ func (item *searchEngine) runPipeline(ctx context.Context, path string) {
 	item.callback()
 }
 
-func (item *searchEngine) pipeline(ctx context.Context, path string) chan *task {
-	ch := start(path)
-	ch = fetch(3, fetchQueue(ctx, ch, item.metrics), ch)
-	ch = size(1, sizeQueue(ctx, ch, item.metrics))
-	ch = hash(6, hashQueue(ctx, ch, item.metrics))
-	ch = match(7, matchQueue(ctx, ch, item.metrics))
-	ch = packQueue(ctx, ch, item.metrics)
+func (item *searchEngine) pipeline(ctx context.Context, rootPath string) chan *task {
+	rec := make(chan *task)
+
+	ch := fileGenerator(rootPath, 3, rec, fetchQueue(ctx, rec, item.metrics))
+	ch = runPool(&sizer{}, 1, sizeQueue(ctx, ch, item.metrics), newCheckList())
+	ch = runPool(&hasher{}, 6, hashQueue(ctx, ch, item.metrics), newCheckList())
+	ch = runPool(&matcher{}, 7, matchQueue(ctx, ch, item.metrics), newCheckList())
+	ch = resultQueue(ctx, ch, item.metrics)
 	return ch
 }

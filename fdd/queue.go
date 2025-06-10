@@ -87,11 +87,12 @@ func outProcess(ctx context.Context, queue *queue, out chan *task) {
 				task := queue.pop()
 				if task != nil {
 					select {
-					case out <- task:
 					case <-ctx.Done():
 						logger.Debug("OutProcess of Queue - cancelled during task send.", slog.String("poolName", queue.poolName))
 						return
+					default:
 					}
+					out <- task
 				} else {
 					break
 				}
@@ -132,7 +133,7 @@ func matchQueue(ctx context.Context, inp chan *task, stat *metrics) chan *task {
 	return ch
 }
 
-func packQueue(ctx context.Context, inp chan *task, stat *metrics) chan *task {
+func resultQueue(ctx context.Context, inp chan *task, stat *metrics) chan *task {
 	ch := counter(inp, stat.Pack.Inp.add)
 	ch = outQueue(ctx, inpQueue("packer", ch))
 	ch = counter(ch, stat.Pack.Out.add)
