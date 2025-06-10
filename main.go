@@ -71,16 +71,7 @@ func main() {
 		cancel()
 	}()
 
-	// Preparing file for logging
-	logFile := newLogFile(config.LoggerFileName)
-	defer logFile.Close()
-	// Creating logger and including to context
-	logger := NewLogger(
-		WithLevel(config.LoggerLevel),
-		WithAddSource(config.LoggerAddSource),
-		WithLogFile(logFile),
-	)
-	ctx = ContextWithLogger(ctx, fdd.KeyCtxLogger{}, logger)
+	
 
 	engine := fdd.GetEngine()
 	// Preparing callback function (event about all tasks completed)

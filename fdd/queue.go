@@ -50,7 +50,7 @@ func inpQueue(poolName string, inp chan *task) *queue {
 }
 
 func inpProcess(inp chan *task, queue *queue) {
-	logger.Debug("InpProcess of Queue - started.", slog.String("poolName", queue.poolName))
+	slog.Debug("InpProcess of Queue - started.", slog.String("poolName", queue.poolName))
 
 	for value := range inp {
 		queue.push(value)
@@ -62,7 +62,7 @@ func inpProcess(inp chan *task, queue *queue) {
 	}
 	close(queue.innerChan)
 
-	logger.Debug("InpProcess of Queue - stoped.", slog.String("poolName", queue.poolName))
+	slog.Debug("InpProcess of Queue - stoped.", slog.String("poolName", queue.poolName))
 }
 
 // Create output chanel for Queue
@@ -74,13 +74,13 @@ func outQueue(ctx context.Context, queue *queue) chan *task {
 }
 
 func outProcess(ctx context.Context, queue *queue, out chan *task) {
-	logger.Debug("OutProcess of Queue - started.", slog.String("poolName", queue.poolName))
+	slog.Debug("OutProcess of Queue - started.", slog.String("poolName", queue.poolName))
 	defer close(out)
 
 	for {
 		select {
 		case <-ctx.Done():
-			logger.Debug("OutProcess of Queue - cancelled.", slog.String("poolName", queue.poolName))
+			slog.Debug("OutProcess of Queue - cancelled.", slog.String("poolName", queue.poolName))
 			return
 		case _, ok := <-queue.innerChan:
 			for {
@@ -88,7 +88,7 @@ func outProcess(ctx context.Context, queue *queue, out chan *task) {
 				if task != nil {
 					select {
 					case <-ctx.Done():
-						logger.Debug("OutProcess of Queue - cancelled during task send.", slog.String("poolName", queue.poolName))
+						slog.Debug("OutProcess of Queue - cancelled during task send.", slog.String("poolName", queue.poolName))
 						return
 					default:
 					}
@@ -98,7 +98,7 @@ func outProcess(ctx context.Context, queue *queue, out chan *task) {
 				}
 			}
 			if !ok {
-				logger.Debug("OutProcess of Queue - stopped because queue is done and empty.", slog.String("poolName", queue.poolName))
+				slog.Debug("OutProcess of Queue - stopped because queue is done and empty.", slog.String("poolName", queue.poolName))
 				return
 			}
 		}

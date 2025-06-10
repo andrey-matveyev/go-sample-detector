@@ -7,46 +7,12 @@ import (
 	"context"
 	"encoding/json"
 	"log/slog"
+	"os"
 	"sync"
 	"time"
 )
 
-var logger *slog.Logger
-
-type KeyCtxLogger struct{}
-
-/*
-	type engineOptions struct {
-		inpChan      chan *task
-		foldersCount atomic.Int64
-		workerPools  sync.WaitGroup
-		logger       *slog.Logger
-	}
-
-	type engineVariables struct {
-		inpChan      chan *task
-		foldersCount atomic.Int64
-		workerPools  sync.WaitGroup
-		logger       *slog.Logger
-	}
-*/
-func loggerFromContext(ctx context.Context) *slog.Logger {
-	if logger, ok := ctx.Value(KeyCtxLogger{}).(*slog.Logger); ok {
-		return logger
-	}
-
-	return slog.Default()
-}
-
-/*
-	func ErrAttr(err error) slog.Attr {
-		if err == nil {
-			return slog.String("error", "nil")
-		}
-
-		return slog.String("error", err.Error())
-	}
-*/
+//var logger *slog.Logger
 
 type Callback func()
 
@@ -62,6 +28,9 @@ func GetEngine() SearchEngine {
 
 type searchEngine struct {
 	//vars *engineVariables
+	defLogger    *slog.Logger
+	logger    *slog.Logger
+	logFile   *os.File
 	callback  Callback
 	poolCount sync.WaitGroup
 	result    *Result
@@ -76,7 +45,19 @@ func newSearchEngine() *searchEngine {
 
 func (item *searchEngine) Run(ctx context.Context, rootPath string, callback Callback) {
 	item.callback = callback
-	logger = loggerFromContext(ctx)
+	//logger = loggerFromContext(ctx)
+	// Preparing file for logging
+	item.logFile = newLogFile("main.log")
+	//defer logFile.Close()
+	// Creating logger and including to context
+	item.defLogger = slog.Default()
+	item.logger = NewLogger(
+		WithLevel("debug"),
+		WithAddSource(false),
+		WithLogFile(item.logFile),
+		WithSetDefault(true),
+	)
+
 	item.init()
 	go item.runPipeline(ctx, rootPath)
 }
@@ -85,7 +66,7 @@ func (item *searchEngine) GetProgress() []byte {
 	item.metrics.Duration = time.Since(item.metrics.StartTime)
 	jsonData, err := json.Marshal(item.metrics)
 	if err != nil {
-		logger.Info("Marshalling error",
+		slog.Info("Marshalling error",
 			slog.String("method", "json.Marshal"),
 			slog.String("error", err.Error()))
 	}
@@ -117,6 +98,8 @@ func (item *searchEngine) runPipeline(ctx context.Context, rootPath string) {
 	item.result = newResult(predResult)
 
 	item.poolCount.Wait()
+	item.logFile.Close()
+	slog.SetDefault(item.defLogger)
 	item.callback()
 }
 

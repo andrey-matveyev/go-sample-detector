@@ -76,7 +76,7 @@ func fileGenerator(rootPath string, amt int, rec, inp chan *task, item *searchEn
 			(&fetcher{}).run(inp, out, dispather.rec, dispather.inc)
 		}()
 	}
-	logger.Debug("Worker-pool - started.", slog.String("workerType", fmt.Sprintf("%T", fetcher{})))
+	slog.Debug("Worker-pool - started.", slog.String("workerType", fmt.Sprintf("%T", fetcher{})))
 
 	go func() {
 		workers.Wait()
@@ -85,7 +85,7 @@ func fileGenerator(rootPath string, amt int, rec, inp chan *task, item *searchEn
 		close(dispather.stop)
 		item.poolCount.Done()
 
-		logger.Debug("Worker-pool - stoped.", slog.String("workerType", fmt.Sprintf("%T", fetcher{})))
+		slog.Debug("Worker-pool - stoped.", slog.String("workerType", fmt.Sprintf("%T", fetcher{})))
 	}()
 	return out
 }
@@ -102,14 +102,14 @@ func runPool(runWorker worker, amt int, inp chan *task, checker checker, item *s
 			runWorker.run(inp, out, checker)
 		}()
 	}
-	logger.Debug("Worker-pool - started.", slog.String("workerType", fmt.Sprintf("%T", runWorker)))
+	slog.Debug("Worker-pool - started.", slog.String("workerType", fmt.Sprintf("%T", runWorker)))
 
 	go func() {
 		workers.Wait()
 		close(out)
 		item.poolCount.Done()
 
-		logger.Debug("Worker-pool - stoped.", slog.String("workerType", fmt.Sprintf("%T", runWorker)))
+		slog.Debug("Worker-pool - stoped.", slog.String("workerType", fmt.Sprintf("%T", runWorker)))
 	}()
 	return out
 }
@@ -233,7 +233,7 @@ func (item *matcher) run(inp, out chan *task, checker checker) {
 
 				filesEqual, checkErr := checkEqual(file1, file2, buf1, buf2)
 				if checkErr != nil {
-					logger.Info("checkEqual() error (file1.Read() or file2.Read()).",
+					slog.Info("checkEqual() error (file1.Read() or file2.Read()).",
 						slog.String("worker", "matcher"),
 						slog.String("method", "checkEqual"),
 						slog.String("error", checkErr.Error()),
@@ -308,7 +308,7 @@ func readDir(name string) ([]os.DirEntry, error) {
 
 func checkError(err error, msg, method string, item any, task *task) bool {
 	if err != nil && err != io.EOF {
-		logger.Info(msg,
+		slog.Info(msg,
 			slog.String("item", fmt.Sprintf("%T", item)),
 			slog.String("method", method),
 			slog.String("error", err.Error()),

@@ -1,13 +1,14 @@
-package main
+package fdd
 
 import (
-	"context"
 	"fmt"
 	"io"
 	"log/slog"
-	"main/fdd"
 	"os"
 )
+
+//
+// https://github.com/theartofdevel/logging
 
 const (
 	defaultLevel      slog.Level = slog.LevelInfo
@@ -113,9 +114,4 @@ func newLogFile(path string) *os.File {
 		os.Exit(1)
 	}
 	return logFile
-}
-
-// Including logger to context.
-func ContextWithLogger(ctx context.Context, key fdd.KeyCtxLogger, logger *slog.Logger) context.Context {
-	return context.WithValue(ctx, key, logger)
 }
