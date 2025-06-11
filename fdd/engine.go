@@ -12,7 +12,7 @@ import (
 	"time"
 )
 
-//var logger *slog.Logger
+// https://stackoverflow.com/questions/53314863/fastest-algorithm-to-detect-duplicate-files
 
 type Callback func()
 

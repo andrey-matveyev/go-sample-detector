@@ -7,7 +7,11 @@ import (
 	"os"
 )
 
-//
+// A convenient, slightly modified wrapper around the slog logger.
+// A plug-and-play solution for quick integration and use in various development scenarios.
+// Thanks to the author.
+// (It offers options to pass the logger into the context, set it as the default logger, configure levels, and more)
+// For details, refer to the source code/original source:
 // https://github.com/theartofdevel/logging
 
 const (
