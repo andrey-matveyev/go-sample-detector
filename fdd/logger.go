@@ -11,6 +11,7 @@ import (
 // A plug-and-play solution for quick integration and use in various development scenarios.
 // Thanks to the author.
 // (It offers options to pass the logger into the context, set it as the default logger, configure levels, and more)
+//
 // For details, refer to the source code/original source:
 // https://github.com/theartofdevel/logging
 
@@ -21,7 +22,7 @@ const (
 	defaultSetDefault bool       = false
 )
 
-type LoggerOptions struct {
+type loggerOptions struct {
 	Level      slog.Level
 	AddSource  bool
 	IsJSON     bool
@@ -29,11 +30,11 @@ type LoggerOptions struct {
 	LogFile    *os.File
 }
 
-type LoggerOption func(*LoggerOptions)
+type loggerOption func(*loggerOptions)
 
-func NewLogger(opts ...LoggerOption) *slog.Logger {
+func newLogger(opts ...loggerOption) *slog.Logger {
 	// Create config by default
-	config := &LoggerOptions{
+	config := &loggerOptions{
 		Level:      defaultLevel,
 		AddSource:  defaultAddSource,
 		IsJSON:     defaultIsJSON,
@@ -74,8 +75,8 @@ func NewLogger(opts ...LoggerOption) *slog.Logger {
 	return logger
 }
 
-func WithLevel(level string) LoggerOption {
-	return func(opts *LoggerOptions) {
+func withLevel(level string) loggerOption {
+	return func(opts *loggerOptions) {
 		var sl slog.Level
 		err := sl.UnmarshalText([]byte(level))
 		if err == nil {
@@ -86,26 +87,20 @@ func WithLevel(level string) LoggerOption {
 	}
 }
 
-func WithAddSource(addSource bool) LoggerOption {
-	return func(opts *LoggerOptions) {
+func withAddSource(addSource bool) loggerOption {
+	return func(opts *loggerOptions) {
 		opts.AddSource = addSource
 	}
 }
 
-func WithIsJSON(isJSON bool) LoggerOption {
-	return func(opts *LoggerOptions) {
-		opts.IsJSON = isJSON
-	}
-}
-
-func WithSetDefault(setDefault bool) LoggerOption {
-	return func(opts *LoggerOptions) {
+func withSetDefault(setDefault bool) loggerOption {
+	return func(opts *loggerOptions) {
 		opts.SetDefault = setDefault
 	}
 }
 
-func WithLogFile(logFile *os.File) LoggerOption {
-	return func(opts *LoggerOptions) {
+func withLogFile(logFile *os.File) loggerOption {
+	return func(opts *loggerOptions) {
 		opts.LogFile = logFile
 	}
 }

@@ -10,7 +10,13 @@ import (
 	"path/filepath"
 	"sync"
 )
+/*
+"Truth is not born pure from the earth; it requires refinement from the superfluous to shine in its essence."
+— Ancient Wisdom
 
+"Divide tasks to conquer complexity."
+— Modern Wisdom
+*/
 type worker interface {
 	run(inp, out chan *task, checker checker)
 }
