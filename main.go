@@ -63,11 +63,12 @@ func main() {
 
 	// Saving result to file
 	saveResult(engine, config.ResultFileName)
-	//
+	// Saving logs
 	logFile.Close()
+	// Returning default logger
 	slog.SetDefault(oldLogger)
 	// Printing total statistic
-	printStatistic(engine)
+	printStatistic(engine, config)
 }
 
 func saveResult(engine fdd.SearchEngine, fileName string) {

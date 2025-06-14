@@ -70,7 +70,7 @@ func metrics(drc direction) string {
 	return fmt.Sprintf("%d_%d_%d", ic, ic-oc, oc)
 }
 
-func printStatistic(engine fdd.SearchEngine) {
+func printStatistic(engine fdd.SearchEngine, config *config) {
 	var stat statistic
 
 	err := json.Unmarshal(engine.GetProgress(), &stat)
@@ -104,6 +104,7 @@ func printStatistic(engine fdd.SearchEngine) {
 	fmt.Printf("Found duplicates <count (size Mb)>:\n")
 	fmt.Printf("- groups of files:%10d\n", len(engine.GetResult().List))
 	fmt.Printf("- files:          %10d (%.3f Mb)\n", stat.Pack.InpQueue.Count, float64(stat.Pack.InpQueue.Size)/1000000)
-	fmt.Printf("File with result was created.\n")
+	fmt.Printf("File with result: %s\n", config.ResultFileName)
+	fmt.Printf("File with logs: %s\n", config.LoggerFileName)
 	fmt.Printf("-------------------------------\n")
 }
