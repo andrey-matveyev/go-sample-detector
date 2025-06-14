@@ -24,10 +24,11 @@ type worker interface {
 
 // For coordination works of fetcher-pool in recursive mode
 type dispatcher struct {
-	done chan struct{} // To send signal about "all folders are processed" - close this chan
-	stop chan struct{} // To send signal about "all fetchers are stopped" - close this chan
-	inc  chan int      // Chan for count unprocessed folders
-	rec  chan *task    // Input chan for recursive tasks (tasks with folders)
+	foldersCount int64
+	done         chan struct{} // To send signal about "all folders are processed" - close this chan
+	stop         chan struct{} // To send signal about "all fetchers are stopped" - close this chan
+	inc          chan int      // Chan for count unprocessed folders
+	rec          chan *task    // Input chan for recursive tasks (tasks with folders)
 }
 
 func newDispatcher(rec chan *task) *dispatcher {
@@ -40,39 +41,38 @@ func newDispatcher(rec chan *task) *dispatcher {
 }
 
 // Sending first task for processing
-func (dd *dispatcher) start(rootPath string) {
-	dd.inc <- 1
-	dd.rec <- newTask(key{}, info{path: rootPath})
+func (item *dispatcher) start(rootPath string) {
+	item.inc <- 1
+	item.rec <- newTask(key{}, info{path: rootPath})
 }
 
 // Wait until all folders are processed
-func (dd *dispatcher) waitQueueDone() {
-	var done int64
-	for i := range dd.inc {
-		done += int64(i)
-		if done == 0 {
-			close(dd.done)
+func (item *dispatcher) waitQueueDone() {
+	for i := range item.inc {
+		item.foldersCount += int64(i)
+		if item.foldersCount == 0 {
+			close(item.done)
 			return
 		}
 	}
 }
 
 // Wait until it is possible to close the channel "rec"
-func (dd *dispatcher) waitFetcherStopped() {
+func (item *dispatcher) waitFetcherStopped() {
 	select {
-	case <-dd.done:
-	case <-dd.stop:
+	case <-item.done:
+	case <-item.stop:
 	}
-	close(dd.rec)
+	close(item.rec)
 }
 
 func fileGenerator(rootPath string, amt int, rec, inp chan *task, item *searchEngine) chan *task {
 	out := make(chan *task)
 
-	dispather := newDispatcher(rec)
-	go dispather.start(rootPath)
-	go dispather.waitQueueDone()
-	go dispather.waitFetcherStopped()
+	dispatcher := newDispatcher(rec)
+	go dispatcher.start(rootPath)
+	go dispatcher.waitQueueDone()
+	go dispatcher.waitFetcherStopped()
 
 	var workers sync.WaitGroup
 	item.poolCount.Add(1)
@@ -80,7 +80,7 @@ func fileGenerator(rootPath string, amt int, rec, inp chan *task, item *searchEn
 		workers.Add(1)
 		go func() {
 			defer workers.Done()
-			(&fetcher{}).run(inp, out, dispather.rec, dispather.inc)
+			(&fetcher{}).run(inp, out, dispatcher.rec, dispatcher.inc)
 		}()
 	}
 	slog.Debug("Worker-pool - started.", slog.String("workerType", fmt.Sprintf("%T", fetcher{})))
@@ -88,8 +88,8 @@ func fileGenerator(rootPath string, amt int, rec, inp chan *task, item *searchEn
 	go func() {
 		workers.Wait()
 		close(out)
-		close(dispather.inc)
-		close(dispather.stop)
+		close(dispatcher.inc)
+		close(dispatcher.stop)
 		item.poolCount.Done()
 
 		slog.Debug("Worker-pool - stoped.", slog.String("workerType", fmt.Sprintf("%T", fetcher{})))
