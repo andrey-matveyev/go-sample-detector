@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"sync"
 )
+
 /*
 "Truth is not born pure from the earth; it requires refinement from the superfluous to shine in its essence."
 — Ancient Wisdom
@@ -128,7 +129,7 @@ func (item *fetcher) run(inp, out, rec chan *task, inc chan int) {
 			defer func() { inc <- -1 }()
 
 			objects, err := readDir(currentTask.info.path) // custom's changed os.ReadDir
-			if checkError(err, "Objects read error.", "readDir()", item, currentTask, nil) {
+			if checkError(err, "Objects read error.", "readDir()", item, currentTask) {
 				return
 			}
 
@@ -142,7 +143,7 @@ func (item *fetcher) run(inp, out, rec chan *task, inc chan int) {
 				}
 
 				objectInfo, err := object.Info()
-				if checkError(err, "Object-info read error.", "object.Info()", item, currentTask, nil) {
+				if checkError(err, "Object-info read error.", "object.Info()", item, currentTask) {
 					continue
 				}
 
@@ -174,16 +175,16 @@ func (item *hasher) run(inp, out chan *task, checker checker) {
 	for inpTask := range inp {
 		func(currentTask *task) {
 			file, err := os.Open(currentTask.path)
-			if checkError(err, "File open error.", "os.Open()", item, currentTask, nil) {
+			if checkError(err, "File open error.", "os.Open()", item, currentTask) {
 				return
 			}
 			defer func(f *os.File) {
 				closeErr := f.Close()
-				checkError(closeErr, "File close error.", "file.Close()", item, currentTask, nil)
+				checkError(closeErr, "File close error.", "file.Close()", item, currentTask)
 			}(file)
 
 			n, err := file.Read(buf) // TODO: check - path="C:\\Users\\All Users"
-			if checkError(err, "File read error.", "file.Read()", item, currentTask, nil) {
+			if checkError(err, "File read error.", "file.Read()", item, currentTask) {
 				return // file will be ignored, if size=0 or Read returns a non-EOF error
 			}
 
@@ -214,18 +215,18 @@ func (item *matcher) run(inp, out chan *task, checker checker) {
 				}
 
 				file1, err := os.Open(currentTask.path)
-				if checkError(err, "File1 open error.", "os.Open()", item, currentTask, nil) {
+				if checkError(err, "File1 open error.", "os.Open()", item, currentTask) {
 					break
 				}
 				defer func() {
 					if file1 != nil {
 						closeErr := file1.Close()
-						checkError(closeErr, "File1 close error.", "file1.Close()", item, currentTask, nil)
+						checkError(closeErr, "File1 close error.", "file1.Close()", item, currentTask)
 					}
 				}()
 
 				file2, err := os.Open(reviewedTask.path)
-				if checkError(err, "File2 open error.", "os.Open()", item, reviewedTask, nil) {
+				if checkError(err, "File2 open error.", "os.Open()", item, reviewedTask) {
 					currentTask.key.equal++
 					file1.Seek(0, io.SeekStart)
 					continue
@@ -233,12 +234,12 @@ func (item *matcher) run(inp, out chan *task, checker checker) {
 				defer func() {
 					if file2 != nil {
 						closeErr := file2.Close()
-						checkError(closeErr, "File2 close error.", "file2.Close()", item, reviewedTask, nil)
+						checkError(closeErr, "File2 close error.", "file2.Close()", item, reviewedTask)
 					}
 				}()
 
 				filesEqual, checkErr := checkEqual(file1, file2, buf1, buf2)
-				checkError(checkErr, "Check equal error (file1.Read() or file2.Read()).", "checkEqual()", item, currentTask, reviewedTask)
+				checkTasksError(checkErr, "Check equal error (file1.Read() or file2.Read()).", "checkEqual()", item, currentTask, reviewedTask)
 
 				if filesEqual {
 					verifiedTask, detected := checker.verify(currentTask)
@@ -305,16 +306,20 @@ func readDir(name string) ([]os.DirEntry, error) {
 	return dirs, err
 }
 
-func checkError(err error, msg, method string, item any, task1, task2 *task) bool {
+func checkError(err error, msg, method string, item any, task *task) bool {
 	if err != nil && err != io.EOF {
-		if task2 == nil {
-			slog.Info(msg,
-				slog.String("item", fmt.Sprintf("%T", item)),
-				slog.String("method", method),
-				slog.String("error", err.Error()),
-				slog.String("path", task1.path))
-			return true
-		}
+		slog.Info(msg,
+			slog.String("item", fmt.Sprintf("%T", item)),
+			slog.String("method", method),
+			slog.String("error", err.Error()),
+			slog.String("path", task.path))
+		return true
+	}
+	return false
+}
+
+func checkTasksError(err error, msg, method string, item any, task1, task2 *task) bool {
+	if err != nil && err != io.EOF {
 		slog.Info(msg,
 			slog.String("item", fmt.Sprintf("%T", item)),
 			slog.String("method", method),

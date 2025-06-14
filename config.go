@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"log"
 	"os"
 
 	"gopkg.in/yaml.v3"
@@ -46,18 +45,21 @@ func (item *config) overrideConfig() {
 
 		data, err := yaml.Marshal(&item)
 		if err != nil {
-			log.Fatalf("error: %v", err)
+			fmt.Printf("error: %v", err)
+			os.Exit(1)
 		}
 
 		err = os.WriteFile(item.configFileName, data, 0644)
 		if err != nil {
-			log.Fatalf("error: %v", err)
+			fmt.Printf("error: %v", err)
+			os.Exit(1)
 		}
 		fmt.Println("Application created config file and continues to work with default parameters")
 	} else {
 		err = yaml.Unmarshal(data, &item)
 		if err != nil {
-			log.Fatalf("error: %v", err)
+			fmt.Printf("error: %v", err)
+			os.Exit(1)
 		}
 	}
 	fmt.Printf("---- CURRENT CONFIGURATION ----\n")
