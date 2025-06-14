@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"main/fdd"
 
 	//_ "net/http/pprof" // package for profiling mode
@@ -22,6 +23,17 @@ func main() {
 			fmt.Println(http.ListenAndServe("localhost:6060", nil))
 		}()
 	*/
+	config := newConfig()
+
+	oldLogger := slog.Default()
+
+	logFile := newLogFile(config.LoggerFileName)
+	newLogger(
+		withLevel(config.LoggerLevel),
+		withAddSource(config.LoggerAddSource),
+		withLogFile(logFile),
+		withSetDefault(true),
+	)
 
 	// Creating context with Cancel
 	ctx := context.Background()
@@ -45,18 +57,21 @@ func main() {
 	}
 	// Running main work and progress-monitor
 	wg.Add(1)
-	engine.Run(ctx, callback)
+	engine.Run(ctx, config.RootPath, callback)
 	go progressMonitor(ctx, engine)
 	wg.Wait()
 
 	// Saving result to file
-	saveResult(engine)
+	saveResult(engine, config.ResultFileName)
+	//
+	logFile.Close()
+	slog.SetDefault(oldLogger)
 	// Printing total statistic
 	printStatistic(engine)
 }
 
-func saveResult(engine fdd.SearchEngine) {
-	resultFile, er := os.OpenFile("result.txt", os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0666)
+func saveResult(engine fdd.SearchEngine, fileName string) {
+	resultFile, er := os.OpenFile(fileName, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0666)
 	if er != nil {
 		fmt.Println(er)
 	}

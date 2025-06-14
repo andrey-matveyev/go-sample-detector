@@ -1,4 +1,4 @@
-package fdd
+package main
 
 import (
 	"fmt"

@@ -44,7 +44,7 @@ type Result struct {
 	List []element
 }
 
-func newResult(predResult *predResult) *Result {
+func result(predResult *predResult) *Result {
 	item := &Result{}
 	item.List = make([]element, len(predResult.List))
 	idx := 0
