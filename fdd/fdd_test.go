@@ -62,8 +62,8 @@ func Test_SearchEngine_BasicFunctionality(t *testing.T) {
 	// Create some test files
 	contentA := []byte(strings.Repeat("a", 100))
 	contentB := []byte(strings.Repeat("a", 100)) // Duplicate content of A
-	contentC := []byte(strings.Repeat("b", 50))
-	contentD := []byte(strings.Repeat("c", 100)) // Same size as A/B, different content
+	contentC := []byte(strings.Repeat("a", 50))  // Duplicate part content of A
+	contentD := []byte(strings.Repeat("b", 100)) // Same size as A/B, different content
 
 	// Manually write content for precise hash calculation
 	path1 := filepath.Join(tmpDir, "file1.txt")
@@ -114,7 +114,7 @@ func Test_SearchEngine_BasicFunctionality(t *testing.T) {
 			if reflect.DeepEqual(currentPaths, expectedPaths) {
 				foundDuplicateGroup = true
 				if elem.Group != 0 { // Based on matcher logic, one comparison leads to group = 0
-					t.Errorf("Expected Group to be 1 for a pair of duplicates, got %d", elem.Group)
+					t.Errorf("Expected Group to be 0 for a pair of duplicates, got %d", elem.Group)
 				}
 				break
 			}
@@ -241,7 +241,7 @@ func Test_SearchEngine_Subdirectories(t *testing.T) {
 			if reflect.DeepEqual(currentPaths, expectedPaths) {
 				foundDuplicateGroup = true
 				if elem.Group != 0 {
-					t.Errorf("Expected Group to be 1 for a pair of duplicates, got %d", elem.Group)
+					t.Errorf("Expected Group to be 0 for a pair of duplicates, got %d", elem.Group)
 				}
 				break
 			}
@@ -290,7 +290,7 @@ func Test_SearchEngine_Cancellation(t *testing.T) {
 		// Callback might still be called if the process was very fast,
 		// but the main point is that it should not block indefinitely.
 		t.Log("Callback was called, indicating graceful shutdown after cancellation (or fast completion).")
-	case <-time.After(5 * time.Second): // A longer timeout for cleanup
+	case <-time.After(30 * time.Second): // A longer timeout for cleanup
 		t.Log("SearchEngine stopped due to cancellation (callback not necessarily called if cancelled early).")
 	}
 

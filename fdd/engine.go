@@ -1,4 +1,10 @@
 // File Duplicate Detector Package
+//
+// There are many discussions on the Internet about algorithms and implementations of the task of finding duplicate files.
+// For example:
+// https://stackoverflow.com/questions/53314863/fastest-algorithm-to-detect-duplicate-files
+//
+// And here is another implementation in Golang
 package fdd
 
 import (
@@ -8,8 +14,6 @@ import (
 	"sync"
 	"time"
 )
-
-// https://stackoverflow.com/questions/53314863/fastest-algorithm-to-detect-duplicate-files
 
 type SearchEngine interface {
 	Run(ctx context.Context, rootPath string, callback func())
