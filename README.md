@@ -1,7 +1,7 @@
-## Implementation Queue for Go Pipelines based on container/list
+## File Duplicate Detector. Go implementation.
 
-![design](https://github.com/andrey-matveyev/go-sample-queue/blob/master/design.png)
+![design](https://github.com/andrey-matveyev/go-sample-detector/blob/master/design.png)
 
 More information you can see at the link:
 
-https://dev.to/andrey_matveyev/building-a-queue-for-go-pipelines-24b
+
