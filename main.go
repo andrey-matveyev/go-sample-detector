@@ -13,8 +13,6 @@ import (
 	"sync"
 )
 
-// Often, reality is stranger than fiction.
-
 func main() {
 	runtime.GOMAXPROCS(runtime.NumCPU())
 	// function for profiling mode
